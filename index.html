@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nl">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Plukklaer Kassa</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+        <script src="script.js" defer></script>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <div class="app">
+            <header class="app-header">
+                <span class="logo">🌸</span>
+                <h1>Plukklaer</h1>
+            </header>
+
+            <main class="flower-panel">
+                <div id="touch"></div>
+            </main>
+
+            <!-- Sticky bottom bar -->
+            <div class="bottom-bar">
+                <div class="bottom-total">
+                    <span class="bottom-label">Totaal</span>
+                    <span class="total-value">€0.00</span>
+                </div>
+                <button class="btn-open-receipt" id="receipt-toggle">
+                    Bestelling
+                    <span id="receipt-item-count" class="item-count-badge"></span>
+                </button>
+            </div>
+
+            <!-- Receipt sheet overlay -->
+            <div class="receipt-overlay" id="receipt-overlay">
+                <div class="receipt-sheet">
+                    <div class="receipt-sheet-header">
+                        <h2>Bestelling</h2>
+                        <button class="btn-close-receipt" id="close-receipt">✕</button>
+                    </div>
+                    <ul id="item-list" class="item-list">
+                        <li class="empty-state">Nog niets toegevoegd</li>
+                    </ul>
+                    <div class="receipt-divider"></div>
+                    <div class="receipt-total-row">
+                        <span>Totaal</span>
+                        <span class="total-value receipt-total-value">€0.00</span>
+                    </div>
+                    <button onclick="resetAmount()" class="btn-reset">🗑 Leegmaken</button>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
