@@ -470,6 +470,90 @@ body {
 
 .btn-reset:active { background: #f5c6c2; }
 
+.btn-checkout,
+.btn-close-checkout {
+    flex-shrink: 0;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--green);
+    color: white;
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s, transform 0.1s;
+}
+
+.btn-checkout:active,
+.btn-close-checkout:active {
+    background: #1e4f2e;
+    transform: scale(0.99);
+}
+
+.btn-checkout:disabled {
+    background: #9db4a4;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.checkout-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 70;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: background 0.25s, opacity 0.25s, visibility 0.25s;
+}
+
+.checkout-overlay.open {
+    background: rgba(0,0,0,0.55);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+
+.checkout-dialog {
+    width: min(100%, 420px);
+    background: var(--panel-bg);
+    border-radius: 24px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+    transform: scale(0.9);
+    transition: transform 0.25s ease;
+}
+
+.checkout-overlay.open .checkout-dialog {
+    transform: scale(1);
+}
+
+.checkout-label {
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-light);
+}
+
+.checkout-amount {
+    font-size: clamp(3rem, 12vw, 5rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--green);
+}
+
 /* ── Desktop: more columns ──────────────────────── */
 
 @media (min-width: 600px) {

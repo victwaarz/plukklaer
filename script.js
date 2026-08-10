@@ -29,8 +29,77 @@ const categories = [
     }
 ];
 
+const ORDER_HISTORY_STORAGE_KEY = "plukklaer-order-history";
+
 // cart: Map of flower name → { name, price, count }
 const cart = new Map();
+
+function formatCurrency(amount) {
+    return `€${amount.toFixed(2)}`;
+}
+
+function getDayKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function buildCartSnapshot() {
+    const items = [...cart.values()]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(({ name, price, count }) => ({
+            name,
+            price,
+            count,
+            subtotal: Number((price * count).toFixed(2))
+        }));
+
+    const total = Number(items.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2));
+    const itemCount = items.reduce((sum, item) => sum + item.count, 0);
+
+    return { items, total, itemCount };
+}
+
+function readOrderHistory() {
+    const rawValue = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
+    return rawValue ? JSON.parse(rawValue) : {};
+}
+
+function writeOrderHistory(history) {
+    localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(history));
+}
+
+function storeCompletedOrder(snapshot) {
+    const now = new Date();
+    const dayKey = getDayKey(now);
+    const history = readOrderHistory();
+    const dayBucket = history[dayKey] ?? {
+        date: dayKey,
+        orderCount: 0,
+        totalRevenue: 0,
+        totalItems: 0,
+        orders: []
+    };
+
+    const order = {
+        id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `order-${now.getTime()}`,
+        createdAt: now.toISOString(),
+        total: snapshot.total,
+        itemCount: snapshot.itemCount,
+        items: snapshot.items
+    };
+
+    dayBucket.orders.push(order);
+    dayBucket.orderCount += 1;
+    dayBucket.totalRevenue = Number((dayBucket.totalRevenue + order.total).toFixed(2));
+    dayBucket.totalItems += order.itemCount;
+
+    history[dayKey] = dayBucket;
+    writeOrderHistory(history);
+}
 
 function createButtons() {
     const touchDiv = document.getElementById("touch");
@@ -99,21 +168,15 @@ function render() {
     const list = document.getElementById("item-list");
     list.innerHTML = "";
 
-    let total = 0;
-    let itemCount = 0;
+    const { items, total, itemCount } = buildCartSnapshot();
 
-    if (cart.size === 0) {
+    if (items.length === 0) {
         const empty = document.createElement("li");
         empty.className = "empty-state";
         empty.textContent = "Nog niets toegevoegd";
         list.appendChild(empty);
     } else {
-        const sorted = [...cart.entries()].sort(([a], [b]) => a.localeCompare(b));
-        sorted.forEach(([name, { price, count }]) => {
-            const subtotal = price * count;
-            total += subtotal;
-            itemCount += count;
-
+        items.forEach(({ name, count, subtotal }) => {
             const li = document.createElement("li");
             li.className = "item-row";
 
@@ -127,7 +190,7 @@ function render() {
 
             const priceSpan = document.createElement("span");
             priceSpan.className = "item-subtotal";
-            priceSpan.textContent = `€${subtotal.toFixed(2)}`;
+            priceSpan.textContent = formatCurrency(subtotal);
 
             const removeBtn = document.createElement("button");
             removeBtn.className = "btn-remove";
@@ -141,13 +204,15 @@ function render() {
 
     // Update all total displays
     document.querySelectorAll(".total-value").forEach(el => {
-        el.textContent = `€${total.toFixed(2)}`;
+        el.textContent = formatCurrency(total);
     });
 
     // Update item count badge in bottom bar
     const badge = document.getElementById("receipt-item-count");
     badge.textContent = itemCount > 0 ? itemCount : "";
     badge.style.display = itemCount > 0 ? "flex" : "none";
+
+    document.getElementById("checkout-button").disabled = items.length === 0;
 
     // Update flower button badges and in-cart state
     document.querySelectorAll(".panelButton").forEach(btn => {
@@ -172,12 +237,37 @@ function closeReceipt() {
     document.getElementById("receipt-overlay").classList.remove("open");
 }
 
+function openCheckoutOverlay(total) {
+    document.getElementById("checkout-amount").textContent = formatCurrency(total);
+    document.getElementById("checkout-overlay").classList.add("open");
+}
+
+function closeCheckoutOverlay() {
+    document.getElementById("checkout-overlay").classList.remove("open");
+}
+
+function checkout() {
+    const snapshot = buildCartSnapshot();
+    if (snapshot.items.length === 0) return;
+
+    storeCompletedOrder(snapshot);
+    openCheckoutOverlay(snapshot.total);
+    cart.clear();
+    closeReceipt();
+    render();
+}
+
 // Wire up UI
 createButtons();
 render();
 
 document.getElementById("receipt-toggle").addEventListener("click", openReceipt);
 document.getElementById("close-receipt").addEventListener("click", closeReceipt);
+document.getElementById("checkout-button").addEventListener("click", checkout);
+document.getElementById("close-checkout").addEventListener("click", closeCheckoutOverlay);
 document.getElementById("receipt-overlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeReceipt();
+});
+document.getElementById("checkout-overlay").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeCheckoutOverlay();
 });

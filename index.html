@@ -47,7 +47,15 @@
                         <span>Totaal</span>
                         <span class="total-value receipt-total-value">€0.00</span>
                     </div>
+                    <button class="btn-checkout" id="checkout-button">Afrekenen</button>
                     <button onclick="resetAmount()" class="btn-reset">🗑 Leegmaken</button>
+                </div>
+            </div>
+            <div class="checkout-overlay" id="checkout-overlay">
+                <div class="checkout-dialog">
+                    <span class="checkout-label">Te betalen</span>
+                    <span class="checkout-amount" id="checkout-amount">€0.00</span>
+                    <button class="btn-close-checkout" id="close-checkout">Nieuwe bestelling</button>
                 </div>
             </div>
         </div>
