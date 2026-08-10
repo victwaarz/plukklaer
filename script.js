@@ -33,6 +33,8 @@ const ORDER_HISTORY_STORAGE_KEY = "plukklaer-order-history";
 
 // cart: Map of flower name → { name, price, count }
 const cart = new Map();
+let currentCheckoutSnapshot = null;
+let currentStoredOrderRef = null;
 
 function formatCurrency(amount) {
     return `€${amount.toFixed(2)}`;
@@ -99,6 +101,46 @@ function storeCompletedOrder(snapshot) {
 
     history[dayKey] = dayBucket;
     writeOrderHistory(history);
+
+    return { dayKey, orderId: order.id };
+}
+
+function removeStoredOrder(orderRef) {
+    if (!orderRef) return;
+
+    const history = readOrderHistory();
+    const dayBucket = history[orderRef.dayKey];
+    if (!dayBucket) return;
+
+    const updatedOrders = dayBucket.orders.filter(order => order.id !== orderRef.orderId);
+    if (updatedOrders.length === dayBucket.orders.length) return;
+
+    if (updatedOrders.length === 0) {
+        delete history[orderRef.dayKey];
+    } else {
+        dayBucket.orders = updatedOrders;
+        dayBucket.orderCount = updatedOrders.length;
+        dayBucket.totalRevenue = Number(
+            updatedOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2)
+        );
+        dayBucket.totalItems = updatedOrders.reduce((sum, order) => sum + order.itemCount, 0);
+        history[orderRef.dayKey] = dayBucket;
+    }
+
+    writeOrderHistory(history);
+}
+
+function restoreCart(snapshot) {
+    cart.clear();
+
+    snapshot.items.forEach(({ name, price, count }) => {
+        cart.set(name, { name, price, count });
+    });
+}
+
+function clearCheckoutState() {
+    currentCheckoutSnapshot = null;
+    currentStoredOrderRef = null;
 }
 
 function createButtons() {
@@ -242,15 +284,31 @@ function openCheckoutOverlay(total) {
     document.getElementById("checkout-overlay").classList.add("open");
 }
 
-function closeCheckoutOverlay() {
+function closeCheckoutOverlay(resetState = true) {
     document.getElementById("checkout-overlay").classList.remove("open");
+
+    if (resetState) {
+        clearCheckoutState();
+    }
+}
+
+function editCheckoutOrder() {
+    if (!currentCheckoutSnapshot) return;
+
+    removeStoredOrder(currentStoredOrderRef);
+    restoreCart(currentCheckoutSnapshot);
+    closeCheckoutOverlay(false);
+    openReceipt();
+    clearCheckoutState();
+    render();
 }
 
 function checkout() {
     const snapshot = buildCartSnapshot();
     if (snapshot.items.length === 0) return;
 
-    storeCompletedOrder(snapshot);
+    currentCheckoutSnapshot = snapshot;
+    currentStoredOrderRef = storeCompletedOrder(snapshot);
     openCheckoutOverlay(snapshot.total);
     cart.clear();
     closeReceipt();
@@ -264,6 +322,7 @@ render();
 document.getElementById("receipt-toggle").addEventListener("click", openReceipt);
 document.getElementById("close-receipt").addEventListener("click", closeReceipt);
 document.getElementById("checkout-button").addEventListener("click", checkout);
+document.getElementById("edit-checkout").addEventListener("click", editCheckoutOrder);
 document.getElementById("close-checkout").addEventListener("click", closeCheckoutOverlay);
 document.getElementById("receipt-overlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeReceipt();

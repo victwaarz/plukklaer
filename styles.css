@@ -471,7 +471,8 @@ body {
 .btn-reset:active { background: #f5c6c2; }
 
 .btn-checkout,
-.btn-close-checkout {
+.btn-close-checkout,
+.btn-edit-checkout {
     flex-shrink: 0;
     width: 100%;
     padding: 14px;
@@ -487,7 +488,8 @@ body {
 }
 
 .btn-checkout:active,
-.btn-close-checkout:active {
+.btn-close-checkout:active,
+.btn-edit-checkout:active {
     background: #1e4f2e;
     transform: scale(0.99);
 }
@@ -552,6 +554,23 @@ body {
     font-weight: 800;
     line-height: 1;
     color: var(--green);
+}
+
+.checkout-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-edit-checkout {
+    background: #eef7ec;
+    color: var(--green);
+    border: 2px solid var(--green);
+}
+
+.btn-edit-checkout:active {
+    background: #d7ead9;
 }
 
 /* ── Desktop: more columns ──────────────────────── */
