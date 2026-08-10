@@ -35,9 +35,14 @@ const ORDER_HISTORY_STORAGE_KEY = "plukklaer-order-history";
 const cart = new Map();
 let currentCheckoutSnapshot = null;
 let currentStoredOrderRef = null;
+let currentHistoryDayKey = getDayKey(new Date());
 
 function formatCurrency(amount) {
-    return `€${amount.toFixed(2)}`;
+    return `€${Number(amount).toFixed(2)}`;
+}
+
+function formatFlowerCount(count) {
+    return `${count} ${count === 1 ? "bloem" : "bloemen"}`;
 }
 
 function getDayKey(date) {
@@ -45,6 +50,34 @@ function getDayKey(date) {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+}
+
+function formatDayLabel(dayKey) {
+    const [year, month, day] = dayKey.split("-").map(Number);
+    const label = new Date(year, month - 1, day).toLocaleDateString("nl-BE", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+
+    return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function formatOrderTime(isoString) {
+    return new Date(isoString).toLocaleTimeString("nl-BE", {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function formatEmailDate(dayKey) {
+    const [year, month, day] = dayKey.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("nl-BE", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
 }
 
 function buildCartSnapshot() {
@@ -70,6 +103,72 @@ function readOrderHistory() {
 
 function writeOrderHistory(history) {
     localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(history));
+}
+
+function getHistoryDayKeys(history, includeToday = false) {
+    const dayKeys = Object.keys(history);
+
+    if (includeToday) {
+        dayKeys.push(getDayKey(new Date()));
+    }
+
+    return [...new Set(dayKeys)].sort();
+}
+
+function getHistoryDayBucket(history, dayKey) {
+    const storedBucket = history[dayKey];
+    const orders = Array.isArray(storedBucket?.orders)
+        ? [...storedBucket.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        : [];
+
+    return {
+        date: dayKey,
+        orderCount: orders.length,
+        totalRevenue: Number(orders.reduce((sum, order) => sum + Number(order.total), 0).toFixed(2)),
+        totalItems: orders.reduce((sum, order) => sum + Number(order.itemCount), 0),
+        orders
+    };
+}
+
+function refreshHistoryOverviewIfOpen(preferredDayKey = currentHistoryDayKey) {
+    if (!document.getElementById("history-overlay").classList.contains("open")) return;
+    renderHistoryOverview(preferredDayKey);
+}
+
+function buildHistoryEmail(dayKey = currentHistoryDayKey) {
+    const history = readOrderHistory();
+    const dayBucket = getHistoryDayBucket(history, dayKey);
+    const formattedDate = formatEmailDate(dayKey);
+    const subject = `Dagoverzicht ${formattedDate}`;
+    const lines = [
+        `Dagoverzicht voor ${formattedDate}`,
+        "",
+        `Bestellingen: ${dayBucket.orderCount}`,
+        `Bloemen: ${dayBucket.totalItems}`,
+        `Omzet: ${formatCurrency(dayBucket.totalRevenue)}`,
+        ""
+    ];
+
+    if (dayBucket.orders.length === 0) {
+        lines.push("Er zijn geen bestellingen opgeslagen voor deze dag.");
+    } else {
+        dayBucket.orders.forEach((order, index) => {
+            lines.push(
+                `Bestelling ${dayBucket.orderCount - index} - ${formatOrderTime(order.createdAt)} - ${formatCurrency(order.total)}`
+            );
+
+            (order.items ?? []).forEach(item => {
+                lines.push(`- ${item.name} x${item.count}`);
+            });
+
+            lines.push("");
+        });
+    }
+
+    return {
+        subject,
+        body: lines.join("\n").trim()
+    };
 }
 
 function storeCompletedOrder(snapshot) {
@@ -101,6 +200,7 @@ function storeCompletedOrder(snapshot) {
 
     history[dayKey] = dayBucket;
     writeOrderHistory(history);
+    refreshHistoryOverviewIfOpen(dayKey);
 
     return { dayKey, orderId: order.id };
 }
@@ -128,6 +228,7 @@ function removeStoredOrder(orderRef) {
     }
 
     writeOrderHistory(history);
+    refreshHistoryOverviewIfOpen(orderRef.dayKey);
 }
 
 function restoreCart(snapshot) {
@@ -279,6 +380,112 @@ function closeReceipt() {
     document.getElementById("receipt-overlay").classList.remove("open");
 }
 
+function renderHistoryOverview(selectedDayKey = currentHistoryDayKey) {
+    const history = readOrderHistory();
+    const availableDayKeys = getHistoryDayKeys(history, true);
+    const fallbackDayKey = availableDayKeys[availableDayKeys.length - 1] ?? getDayKey(new Date());
+
+    currentHistoryDayKey = availableDayKeys.includes(selectedDayKey) ? selectedDayKey : fallbackDayKey;
+
+    const currentIndex = availableDayKeys.indexOf(currentHistoryDayKey);
+    const dayBucket = getHistoryDayBucket(history, currentHistoryDayKey);
+    const orderList = document.getElementById("history-order-list");
+
+    document.getElementById("history-date-label").textContent = formatDayLabel(currentHistoryDayKey);
+    document.getElementById("history-order-count").textContent = String(dayBucket.orderCount);
+    document.getElementById("history-total-items").textContent = String(dayBucket.totalItems);
+    document.getElementById("history-total-revenue").textContent = formatCurrency(dayBucket.totalRevenue);
+    document.getElementById("history-prev-day").disabled = currentIndex <= 0;
+    document.getElementById("history-next-day").disabled = currentIndex === -1 || currentIndex >= availableDayKeys.length - 1;
+
+    orderList.innerHTML = "";
+
+    if (dayBucket.orders.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "history-empty-state";
+        empty.textContent = "Nog geen bestellingen opgeslagen op deze dag.";
+        orderList.appendChild(empty);
+        return;
+    }
+
+    dayBucket.orders.forEach((order, index) => {
+        const orderCard = document.createElement("li");
+        orderCard.className = "history-order-card";
+
+        const orderHead = document.createElement("div");
+        orderHead.className = "history-order-head";
+
+        const orderTitleWrap = document.createElement("div");
+
+        const orderTitle = document.createElement("strong");
+        orderTitle.className = "history-order-title";
+        orderTitle.textContent = `Bestelling ${dayBucket.orderCount - index}`;
+
+        const orderMeta = document.createElement("span");
+        orderMeta.className = "history-order-meta";
+        orderMeta.textContent = `${formatOrderTime(order.createdAt)} · ${formatFlowerCount(order.itemCount)}`;
+
+        orderTitleWrap.append(orderTitle, orderMeta);
+
+        const orderTotal = document.createElement("span");
+        orderTotal.className = "history-order-total";
+        orderTotal.textContent = formatCurrency(order.total);
+
+        orderHead.append(orderTitleWrap, orderTotal);
+
+        const itemList = document.createElement("ul");
+        itemList.className = "history-order-items";
+
+        (order.items ?? []).forEach(item => {
+            const itemRow = document.createElement("li");
+            itemRow.className = "history-order-item";
+
+            const itemName = document.createElement("span");
+            itemName.className = "history-order-item-name";
+            itemName.textContent = item.name;
+
+            const itemCount = document.createElement("span");
+            itemCount.className = "history-order-item-count";
+            itemCount.textContent = `×${item.count}`;
+
+            itemRow.append(itemName, itemCount);
+            itemList.appendChild(itemRow);
+        });
+
+        orderCard.append(orderHead, itemList);
+        orderList.appendChild(orderCard);
+    });
+}
+
+function openHistoryOverlay() {
+    currentHistoryDayKey = getDayKey(new Date());
+    closeReceipt();
+    renderHistoryOverview();
+    document.getElementById("history-overlay").classList.add("open");
+}
+
+function closeHistoryOverlay() {
+    document.getElementById("history-overlay").classList.remove("open");
+}
+
+function navigateHistoryDay(step) {
+    const history = readOrderHistory();
+    const availableDayKeys = getHistoryDayKeys(history, true);
+    const currentIndex = availableDayKeys.indexOf(currentHistoryDayKey);
+    const nextDayKey = availableDayKeys[currentIndex + step];
+
+    if (!nextDayKey) return;
+
+    currentHistoryDayKey = nextDayKey;
+    renderHistoryOverview();
+}
+
+function emailHistoryOverview() {
+    const { subject, body } = buildHistoryEmail();
+    const mailtoUrl = `mailto:info@plukklaer.be?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+}
+
 function openCheckoutOverlay(total) {
     document.getElementById("checkout-amount").textContent = formatCurrency(total);
     document.getElementById("checkout-overlay").classList.add("open");
@@ -323,7 +530,12 @@ document.getElementById("receipt-toggle").addEventListener("click", openReceipt)
 document.getElementById("close-receipt").addEventListener("click", closeReceipt);
 document.getElementById("checkout-button").addEventListener("click", checkout);
 document.getElementById("edit-checkout").addEventListener("click", editCheckoutOrder);
-document.getElementById("close-checkout").addEventListener("click", closeCheckoutOverlay);
+document.getElementById("close-checkout").addEventListener("click", () => closeCheckoutOverlay());
+document.getElementById("history-toggle").addEventListener("click", openHistoryOverlay);
+document.getElementById("close-history").addEventListener("click", closeHistoryOverlay);
+document.getElementById("history-email-button").addEventListener("click", emailHistoryOverview);
+document.getElementById("history-prev-day").addEventListener("click", () => navigateHistoryDay(-1));
+document.getElementById("history-next-day").addEventListener("click", () => navigateHistoryDay(1));
 document.getElementById("receipt-overlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeReceipt();
 });

@@ -12,8 +12,14 @@
     <body>
         <div class="app">
             <header class="app-header">
-                <span class="logo">🌸</span>
-                <h1>Plukklaer</h1>
+                <div class="app-brand">
+                    <span class="logo">🌸</span>
+                    <div class="app-title-group">
+                        <h1>Plukklaer</h1>
+                        <span class="app-version">v2</span>
+                    </div>
+                </div>
+                <button class="header-action" id="history-toggle" aria-label="Open dagoverzicht">📥</button>
             </header>
 
             <main class="flower-panel">
@@ -58,6 +64,39 @@
                     <div class="checkout-actions">
                         <button class="btn-edit-checkout" id="edit-checkout">Bewerken</button>
                         <button class="btn-close-checkout" id="close-checkout">Nieuwe bestelling</button>
+                    </div>
+                </div>
+            </div>
+            <div class="history-overlay" id="history-overlay">
+                <div class="history-screen">
+                    <div class="history-topbar">
+                        <button class="btn-history-back" id="close-history" aria-label="Terug naar kassa">← Kassa</button>
+                        <button class="btn-history-mail" id="history-email-button" aria-label="Mail dagoverzicht">✉️ Mail</button>
+                    </div>
+                    <div class="history-day-nav">
+                        <button class="history-arrow" id="history-prev-day" aria-label="Vorige opgeslagen dag">←</button>
+                        <div class="history-day-heading">
+                            <span class="history-day-label">Dagoverzicht</span>
+                            <h2 id="history-date-label">Vandaag</h2>
+                        </div>
+                        <button class="history-arrow" id="history-next-day" aria-label="Volgende opgeslagen dag">→</button>
+                    </div>
+                    <div class="history-summary">
+                        <article class="history-summary-card">
+                            <span class="history-summary-label">Bestellingen</span>
+                            <strong id="history-order-count">0</strong>
+                        </article>
+                        <article class="history-summary-card">
+                            <span class="history-summary-label">Bloemen</span>
+                            <strong id="history-total-items">0</strong>
+                        </article>
+                        <article class="history-summary-card">
+                            <span class="history-summary-label">Omzet</span>
+                            <strong id="history-total-revenue">€0.00</strong>
+                        </article>
+                    </div>
+                    <div class="history-orders">
+                        <ul class="history-order-list" id="history-order-list"></ul>
                     </div>
                 </div>
             </div>
