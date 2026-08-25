@@ -30,11 +30,14 @@ jobs:
         run: pip install qrcode[pil]
 
       - name: Generate QR code from secret payment link
+        env:
+          PAYMENT_LINK: ${{ secrets.PAYMENT_LINK }}
         run: |
-          python << EOF
-          import qrcode
+          python << 'EOF'
+          import qrcode, os
+          link = os.environ['PAYMENT_LINK']
           qr = qrcode.QRCode(version=1, box_size=10, border=5)
-          qr.add_data('${{ secrets.PAYMENT_LINK }}')
+          qr.add_data(link)
           qr.make(fit=True)
           img = qr.make_image(fill_color="black", back_color="white")
           img.save('qr-code.png')
