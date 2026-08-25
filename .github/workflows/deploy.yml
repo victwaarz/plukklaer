@@ -40,6 +40,9 @@ jobs:
           img.save('qr-code.png')
           EOF
 
+      - name: List files before upload
+        run: ls -la
+
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
