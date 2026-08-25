@@ -34,6 +34,11 @@
     --cat4-accent: #c05020;
     --cat4-btn: #fad8c0;
     --cat4-btn-active: #f5a878;
+
+    --cat5-bg: #edf4fb;
+    --cat5-accent: #2f6ea5;
+    --cat5-btn: #dcecff;
+    --cat5-btn-active: #b8d8fb;
 }
 
 body {
@@ -143,6 +148,7 @@ body {
 .category-header.cat2 { background: var(--cat2-bg); border-bottom: 2px solid var(--cat2-accent); }
 .category-header.cat3 { background: var(--cat3-bg); border-bottom: 2px solid var(--cat3-accent); }
 .category-header.cat4 { background: var(--cat4-bg); border-bottom: 2px solid var(--cat4-accent); }
+.category-header.cat5 { background: var(--cat5-bg); border-bottom: 2px solid var(--cat5-accent); }
 
 .cat-title {
     display: flex;
@@ -172,6 +178,7 @@ body {
 .cat2 .cat-price { color: var(--cat2-accent); }
 .cat3 .cat-price { color: var(--cat3-accent); }
 .cat4 .cat-price { color: var(--cat4-accent); }
+.cat5 .cat-price { color: var(--cat5-accent); }
 
 /* ── Button grid ────────────────────────────────── */
 
@@ -206,6 +213,7 @@ body {
 .panelButton.cat2 { background: var(--cat2-btn); }
 .panelButton.cat3 { background: var(--cat3-btn); }
 .panelButton.cat4 { background: var(--cat4-btn); }
+.panelButton.cat5 { background: var(--cat5-btn); }
 
 .panelButton:active {
     transform: scale(0.95);
@@ -215,11 +223,13 @@ body {
 .panelButton.cat2:active { background: var(--cat2-btn-active); }
 .panelButton.cat3:active { background: var(--cat3-btn-active); }
 .panelButton.cat4:active { background: var(--cat4-btn-active); }
+.panelButton.cat5:active { background: var(--cat5-btn-active); }
 
 .panelButton.in-cart.cat1 { border-color: var(--cat1-accent); box-shadow: 0 0 0 1px var(--cat1-accent); }
 .panelButton.in-cart.cat2 { border-color: var(--cat2-accent); box-shadow: 0 0 0 1px var(--cat2-accent); }
 .panelButton.in-cart.cat3 { border-color: var(--cat3-accent); box-shadow: 0 0 0 1px var(--cat3-accent); }
 .panelButton.in-cart.cat4 { border-color: var(--cat4-accent); box-shadow: 0 0 0 1px var(--cat4-accent); }
+.panelButton.in-cart.cat5 { border-color: var(--cat5-accent); box-shadow: 0 0 0 1px var(--cat5-accent); }
 
 .flower-name {
     font-size: 0.9rem;
@@ -251,6 +261,7 @@ body {
 .cat2 .flower-badge { background: var(--cat2-accent); }
 .cat3 .flower-badge { background: var(--cat3-accent); }
 .cat4 .flower-badge { background: var(--cat4-accent); }
+.cat5 .flower-badge { background: var(--cat5-accent); }
 
 /* ── Bottom bar ─────────────────────────────────── */
 

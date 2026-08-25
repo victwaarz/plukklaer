@@ -26,6 +26,13 @@ const categories = [
         price: 2.00,
         color: "cat4",
         names: ["Amarant", "Dahlia Groot", "Zonnebloem Groot"]
+    },
+    {
+        number: 5,
+        label: "Overige",
+        color: "cat5",
+        priceLabel: "Variërend",
+        items: [{ name: "Appelsap", price: 8.00 }]
     }
 ];
 
@@ -34,7 +41,6 @@ const ORDER_HISTORY_STORAGE_KEY = "plukklaer-order-history";
 // cart: Map of flower name → { name, price, count }
 const cart = new Map();
 let currentCheckoutSnapshot = null;
-let currentStoredOrderRef = null;
 let currentHistoryDayKey = getDayKey(new Date());
 
 function formatCurrency(amount) {
@@ -205,32 +211,6 @@ function storeCompletedOrder(snapshot) {
     return { dayKey, orderId: order.id };
 }
 
-function removeStoredOrder(orderRef) {
-    if (!orderRef) return;
-
-    const history = readOrderHistory();
-    const dayBucket = history[orderRef.dayKey];
-    if (!dayBucket) return;
-
-    const updatedOrders = dayBucket.orders.filter(order => order.id !== orderRef.orderId);
-    if (updatedOrders.length === dayBucket.orders.length) return;
-
-    if (updatedOrders.length === 0) {
-        delete history[orderRef.dayKey];
-    } else {
-        dayBucket.orders = updatedOrders;
-        dayBucket.orderCount = updatedOrders.length;
-        dayBucket.totalRevenue = Number(
-            updatedOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2)
-        );
-        dayBucket.totalItems = updatedOrders.reduce((sum, order) => sum + order.itemCount, 0);
-        history[orderRef.dayKey] = dayBucket;
-    }
-
-    writeOrderHistory(history);
-    refreshHistoryOverviewIfOpen(orderRef.dayKey);
-}
-
 function restoreCart(snapshot) {
     cart.clear();
 
@@ -241,7 +221,6 @@ function restoreCart(snapshot) {
 
 function clearCheckoutState() {
     currentCheckoutSnapshot = null;
-    currentStoredOrderRef = null;
 }
 
 function createButtons() {
@@ -253,19 +232,27 @@ function createButtons() {
 
         const header = document.createElement("div");
         header.className = `category-header ${cat.color}`;
+        const priceText = Number.isFinite(cat.price)
+            ? `€${cat.price.toFixed(2)}`
+            : cat.priceLabel ?? "";
+
         header.innerHTML = `
             <div class="cat-title">
                 <span class="cat-number">Cat. ${cat.number}</span>
                 <span class="cat-label">${cat.label}</span>
             </div>
-            <span class="cat-price">€${cat.price.toFixed(2)}</span>
+            <span class="cat-price">${priceText}</span>
         `;
         section.appendChild(header);
 
         const group = document.createElement("div");
         group.className = "button-group";
 
-        cat.names.forEach(name => {
+        const items = Array.isArray(cat.items)
+            ? cat.items
+            : cat.names.map(name => ({ name, price: cat.price }));
+
+        items.forEach(({ name, price }) => {
             const btn = document.createElement("div");
             btn.className = `panelButton ${cat.color}`;
             btn.dataset.name = name;
@@ -278,7 +265,7 @@ function createButtons() {
             badge.className = "flower-badge";
 
             btn.append(nameSpan, badge);
-            btn.addEventListener("click", () => addToCart(name, cat.price));
+            btn.addEventListener("click", () => addToCart(name, price));
             group.appendChild(btn);
         });
 
@@ -502,11 +489,9 @@ function closeCheckoutOverlay(resetState = true) {
 function editCheckoutOrder() {
     if (!currentCheckoutSnapshot) return;
 
-    removeStoredOrder(currentStoredOrderRef);
     restoreCart(currentCheckoutSnapshot);
-    closeCheckoutOverlay(false);
+    closeCheckoutOverlay();
     openReceipt();
-    clearCheckoutState();
     render();
 }
 
@@ -515,9 +500,17 @@ function checkout() {
     if (snapshot.items.length === 0) return;
 
     currentCheckoutSnapshot = snapshot;
-    currentStoredOrderRef = storeCompletedOrder(snapshot);
     openCheckoutOverlay(snapshot.total);
+    closeReceipt();
+    render();
+}
+
+function completeCheckoutOrder() {
+    if (!currentCheckoutSnapshot) return;
+
+    storeCompletedOrder(currentCheckoutSnapshot);
     cart.clear();
+    closeCheckoutOverlay();
     closeReceipt();
     render();
 }
@@ -530,7 +523,7 @@ document.getElementById("receipt-toggle").addEventListener("click", openReceipt)
 document.getElementById("close-receipt").addEventListener("click", closeReceipt);
 document.getElementById("checkout-button").addEventListener("click", checkout);
 document.getElementById("edit-checkout").addEventListener("click", editCheckoutOrder);
-document.getElementById("close-checkout").addEventListener("click", () => closeCheckoutOverlay());
+document.getElementById("close-checkout").addEventListener("click", completeCheckoutOrder);
 document.getElementById("history-toggle").addEventListener("click", openHistoryOverlay);
 document.getElementById("close-history").addEventListener("click", closeHistoryOverlay);
 document.getElementById("history-email-button").addEventListener("click", emailHistoryOverview);
