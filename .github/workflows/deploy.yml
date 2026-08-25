@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install qrcode library
+        run: pip install qrcode[pil]
+
+      - name: Generate QR code from secret payment link
+        run: |
+          python << EOF
+          import qrcode
+          qr = qrcode.QRCode(version=1, box_size=10, border=5)
+          qr.add_data('${{ secrets.PAYMENT_LINK }}')
+          qr.make(fit=True)
+          img = qr.make_image(fill_color="black", back_color="white")
+          img.save('qr-code.png')
+          EOF
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
