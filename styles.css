@@ -630,6 +630,104 @@ body {
     background: #d7ead9;
 }
 
+.voucher-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 75;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: background 0.2s, opacity 0.2s, visibility 0.2s;
+}
+
+.voucher-overlay.open {
+    background: rgba(0,0,0,0.5);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+
+.voucher-dialog {
+    width: min(100%, 380px);
+    background: var(--panel-bg);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+}
+
+.voucher-dialog h3 {
+    color: var(--green);
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+
+.voucher-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.voucher-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.voucher-field span {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.voucher-field input {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: var(--font);
+    font-size: 0.95rem;
+}
+
+.voucher-field input:focus {
+    outline: 2px solid #d7ead9;
+    border-color: var(--green);
+}
+
+.voucher-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.btn-voucher-cancel,
+.btn-voucher-save {
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.btn-voucher-cancel {
+    background: #f3f0eb;
+    color: var(--text-light);
+}
+
+.btn-voucher-save {
+    background: var(--green);
+    color: white;
+}
+
 .history-overlay {
     position: fixed;
     inset: 0;

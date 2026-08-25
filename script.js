@@ -32,13 +32,16 @@ const categories = [
         label: "Overige",
         color: "cat5",
         priceLabel: "Variërend",
-        items: [{ name: "Appelsap", price: 8.00 }]
+        items: [
+            { name: "Appelsap", price: 8.00 },
+            { name: "Cadeaubon", requiresInput: true }
+        ]
     }
 ];
 
 const ORDER_HISTORY_STORAGE_KEY = "plukklaer-order-history";
 
-// cart: Map of flower name → { name, price, count }
+// cart: Map of cart key → { cartKey, sourceName, name, price, count, voucherNumber? }
 const cart = new Map();
 let currentCheckoutSnapshot = null;
 let currentHistoryDayKey = getDayKey(new Date());
@@ -89,10 +92,13 @@ function formatEmailDate(dayKey) {
 function buildCartSnapshot() {
     const items = [...cart.values()]
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(({ name, price, count }) => ({
+        .map(({ cartKey, sourceName, name, price, count, voucherNumber }) => ({
+            cartKey,
+            sourceName,
             name,
             price,
             count,
+            voucherNumber,
             subtotal: Number((price * count).toFixed(2))
         }));
 
@@ -214,13 +220,61 @@ function storeCompletedOrder(snapshot) {
 function restoreCart(snapshot) {
     cart.clear();
 
-    snapshot.items.forEach(({ name, price, count }) => {
-        cart.set(name, { name, price, count });
+    snapshot.items.forEach(({ cartKey, sourceName, name, price, count, voucherNumber }) => {
+        const key = cartKey ?? name;
+        cart.set(key, { cartKey: key, sourceName: sourceName ?? name, name, price, count, voucherNumber });
     });
 }
 
 function clearCheckoutState() {
     currentCheckoutSnapshot = null;
+}
+
+function parsePriceInput(value) {
+    return Number(value.replace(",", "."));
+}
+
+function buildGiftVoucherLabel(voucherNumber) {
+    return `Cadeaubon (${voucherNumber})`;
+}
+
+function openVoucherDialog() {
+    const overlay = document.getElementById("voucher-overlay");
+    const priceInput = document.getElementById("voucher-price-input");
+    const numberInput = document.getElementById("voucher-number-input");
+
+    priceInput.value = "";
+    numberInput.value = "";
+    overlay.classList.add("open");
+    priceInput.focus();
+}
+
+function closeVoucherDialog() {
+    document.getElementById("voucher-overlay").classList.remove("open");
+}
+
+function addGiftVoucherToCart() {
+    const priceInput = document.getElementById("voucher-price-input");
+    const numberInput = document.getElementById("voucher-number-input");
+    const price = parsePriceInput(priceInput.value.trim());
+    const voucherNumber = numberInput.value.trim();
+
+    if (!Number.isFinite(price) || price <= 0) {
+        priceInput.focus();
+        return;
+    }
+
+    if (!voucherNumber) {
+        numberInput.focus();
+        return;
+    }
+
+    addToCart(buildGiftVoucherLabel(voucherNumber), price, {
+        sourceName: "Cadeaubon",
+        stackable: false,
+        voucherNumber
+    });
+    closeVoucherDialog();
 }
 
 function createButtons() {
@@ -252,10 +306,10 @@ function createButtons() {
             ? cat.items
             : cat.names.map(name => ({ name, price: cat.price }));
 
-        items.forEach(({ name, price }) => {
+        items.forEach(({ name, price, requiresInput }) => {
             const btn = document.createElement("div");
             btn.className = `panelButton ${cat.color}`;
-            btn.dataset.name = name;
+            btn.dataset.sourceName = name;
 
             const nameSpan = document.createElement("span");
             nameSpan.className = "flower-name";
@@ -265,7 +319,14 @@ function createButtons() {
             badge.className = "flower-badge";
 
             btn.append(nameSpan, badge);
-            btn.addEventListener("click", () => addToCart(name, price));
+            btn.addEventListener("click", () => {
+                if (requiresInput) {
+                    openVoucherDialog();
+                    return;
+                }
+
+                addToCart(name, price, { sourceName: name });
+            });
             group.appendChild(btn);
         });
 
@@ -274,24 +335,43 @@ function createButtons() {
     });
 }
 
-function addToCart(name, price) {
-    if (cart.has(name)) {
-        cart.get(name).count++;
+function addToCart(name, price, options = {}) {
+    const sourceName = options.sourceName ?? name;
+    const stackable = options.stackable !== false;
+    const cartKey = stackable
+        ? sourceName
+        : options.cartKey ?? `${sourceName}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    if (stackable && cart.has(cartKey)) {
+        cart.get(cartKey).count++;
     } else {
-        cart.set(name, { name, price, count: 1 });
+        cart.set(cartKey, {
+            cartKey,
+            sourceName,
+            name,
+            price,
+            count: 1,
+            voucherNumber: options.voucherNumber
+        });
     }
     render();
 }
 
-function removeFromCart(name) {
-    if (!cart.has(name)) return;
-    const entry = cart.get(name);
+function removeFromCart(cartKey) {
+    if (!cart.has(cartKey)) return;
+    const entry = cart.get(cartKey);
     if (entry.count > 1) {
         entry.count--;
     } else {
-        cart.delete(name);
+        cart.delete(cartKey);
     }
     render();
+}
+
+function getCartCountForSource(sourceName) {
+    return [...cart.values()].reduce((sum, entry) => (
+        entry.sourceName === sourceName ? sum + entry.count : sum
+    ), 0);
 }
 
 function render() {
@@ -306,7 +386,7 @@ function render() {
         empty.textContent = "Nog niets toegevoegd";
         list.appendChild(empty);
     } else {
-        items.forEach(({ name, count, subtotal }) => {
+        items.forEach(({ cartKey, name, count, subtotal }) => {
             const li = document.createElement("li");
             li.className = "item-row";
 
@@ -325,7 +405,7 @@ function render() {
             const removeBtn = document.createElement("button");
             removeBtn.className = "btn-remove";
             removeBtn.textContent = "−";
-            removeBtn.addEventListener("click", () => removeFromCart(name));
+            removeBtn.addEventListener("click", () => removeFromCart(cartKey));
 
             li.append(nameSpan, qtySpan, priceSpan, removeBtn);
             list.appendChild(li);
@@ -346,10 +426,10 @@ function render() {
 
     // Update flower button badges and in-cart state
     document.querySelectorAll(".panelButton").forEach(btn => {
-        const entry = cart.get(btn.dataset.name);
+        const count = getCartCountForSource(btn.dataset.sourceName);
         const flowerBadge = btn.querySelector(".flower-badge");
-        flowerBadge.textContent = entry ? entry.count : "";
-        btn.classList.toggle("in-cart", !!entry);
+        flowerBadge.textContent = count > 0 ? count : "";
+        btn.classList.toggle("in-cart", count > 0);
     });
 }
 
@@ -529,9 +609,17 @@ document.getElementById("close-history").addEventListener("click", closeHistoryO
 document.getElementById("history-email-button").addEventListener("click", emailHistoryOverview);
 document.getElementById("history-prev-day").addEventListener("click", () => navigateHistoryDay(-1));
 document.getElementById("history-next-day").addEventListener("click", () => navigateHistoryDay(1));
+document.getElementById("cancel-voucher").addEventListener("click", closeVoucherDialog);
+document.getElementById("voucher-form").addEventListener("submit", e => {
+    e.preventDefault();
+    addGiftVoucherToCart();
+});
 document.getElementById("receipt-overlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeReceipt();
 });
 document.getElementById("checkout-overlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeCheckoutOverlay();
+});
+document.getElementById("voucher-overlay").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeVoucherDialog();
 });

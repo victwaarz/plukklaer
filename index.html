@@ -16,7 +16,7 @@
                     <span class="logo">🌸</span>
                     <div class="app-title-group">
                         <h1>Plukklaer</h1>
-                        <span class="app-version">v2</span>
+                        <span class="app-version">v3</span>
                     </div>
                 </div>
                 <button class="header-action" id="history-toggle" aria-label="Open dagoverzicht">📥</button>
@@ -66,6 +66,25 @@
                         <button class="btn-edit-checkout" id="edit-checkout">Bewerken</button>
                         <button class="btn-close-checkout" id="close-checkout">Nieuwe bestelling</button>
                     </div>
+                </div>
+            </div>
+            <div class="voucher-overlay" id="voucher-overlay">
+                <div class="voucher-dialog">
+                    <h3>Cadeaubon toevoegen</h3>
+                    <form id="voucher-form" class="voucher-form">
+                        <label class="voucher-field">
+                            <span>Prijs (€)</span>
+                            <input id="voucher-price-input" type="number" inputmode="decimal" min="0.01" step="0.01" required>
+                        </label>
+                        <label class="voucher-field">
+                            <span>Bonnummer</span>
+                            <input id="voucher-number-input" type="text" required>
+                        </label>
+                        <div class="voucher-actions">
+                            <button type="button" class="btn-voucher-cancel" id="cancel-voucher">Annuleren</button>
+                            <button type="submit" class="btn-voucher-save" id="save-voucher">Toevoegen</button>
+                        </div>
+                    </form>
                 </div>
             </div>
             <div class="history-overlay" id="history-overlay">
